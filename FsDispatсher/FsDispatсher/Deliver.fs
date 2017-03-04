@@ -2,19 +2,27 @@
         
 open FsDispatcher.Prelude
 
+type SyncMode =
+    | Head
+    | Tail
+
+type BasicMode =
+    | Sync of SyncMode  
+    | Async
+
+type QueueMode =
+    | Sync
+    
 type Mode =
-    | SyncHead = 0         
-    | SyncTail = 1
-    | Async = 2
-    | Queue = 3
+    | Basic of BasicMode
+    | Queue of QueueMode
+    | DedicatedQueue of obj*QueueMode
 
-type Container<'a> = Map<Mode, ('a -> unit) list>
+type ModeKey = int
+let key (mode : _) : ModeKey= 
+    mode.GetHashCode()
 
-let private noQueueModes = [Mode.SyncHead;Mode.SyncTail;Mode.Async]
-let private queueModes = [Mode.Queue]
-
-let isQueueMode m = queueModes |> List.exists ((=) m)
-let isNoQueueMode m = not(isQueueMode m)
+type Container<'a> = Map<ModeKey, ('a -> unit) list>
 
 module Container =
     let private create<'a> seq : Container<'a> = 
@@ -22,18 +30,20 @@ module Container =
         |> Seq.map (fun x -> x, []) 
         |> Map.ofSeq
 
-    let createNoQueue<'a> = 
-        noQueueModes
+    let basic<'a> =
+        [BasicMode.Async; BasicMode.Sync SyncMode.Head; BasicMode.Sync SyncMode.Tail]
+        |> Seq.map key
         |> create<'a>
 
-    let createQueue<'a> = 
-        queueModes
+    let queue<'a> =        
+        [QueueMode.Sync]
+        |> Seq.map key
         |> create<'a>
 
-    let register<'a> deliver (func: 'a -> unit) (container : Container<'a>) =    
-        let current = if container.ContainsKey(deliver) 
-                        then container.[deliver]
+    let register<'a> mode (func: 'a -> unit) (container : Container<'a>) =    
+        let current = if container.ContainsKey(mode) 
+                        then container.[mode]
                         else []
         container
-        |> Map.change deliver (func :: current)            
+        |> Map.change mode (func :: current)            
 

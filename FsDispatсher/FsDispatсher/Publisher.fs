@@ -11,8 +11,8 @@ let private async<'a> message = broadcast<'a> (fun f -> async{ f message} |> Asy
 let start<'a> dispatcher (message : 'a) = 
     let om = box message
     dispatcher
-    |> sync om Deliver.Mode.SyncHead
-    |> async om Deliver.Mode.Async
+    |> sync om (key (BasicMode.Sync SyncMode.Head))
+    |> async om (key BasicMode.Async)
     |> enqueue om
-    |> sync om Deliver.Mode.SyncTail
+    |> sync om (key (BasicMode.Sync SyncMode.Tail))
     |> ignore

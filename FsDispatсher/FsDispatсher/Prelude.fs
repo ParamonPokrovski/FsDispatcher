@@ -6,11 +6,14 @@
             | :? 'a as a -> Some a 
             | _ -> None    
             
+    module Check =
+        let typeof<'a> x = (Option.cast<'a> x).IsSome
+
     module Seq =
        let ofType<'a> = Seq.choose(Option.cast<'a>)
 
-       let any<'a> = Seq.exists (fun x -> (Option.cast<'a> x).IsSome)
-       let find<'a> = Seq.find (fun x -> (Option.cast<'a> x).IsSome)
+       let any<'a> = Seq.exists Check.typeof<'a>
+       let find<'a> = Seq.find Check.typeof<'a>
 
        let iter<'a> func =
             ofType<'a -> unit>

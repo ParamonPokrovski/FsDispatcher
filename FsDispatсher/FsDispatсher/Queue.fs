@@ -24,7 +24,7 @@ module Mailbox =
                                         
                                         let! msg = inbox.Receive()
         
-                                        c.[Deliver.Mode.Queue]
+                                        c.[Deliver.key  Deliver.QueueMode.Sync]
                                         |> List.iter (fun x -> x msg)
                                         
                                         return! messageLoop()}                                    
@@ -32,7 +32,7 @@ module Mailbox =
 
 [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
 module Processor =
-    let create<'a> id = new Processor<'a>(Mailbox.empty<'a>, Deliver.Container.createQueue<'a>)
+    let create<'a> id = new Processor<'a>(Mailbox.empty<'a>, Deliver.Container.queue<'a>)
     
     let register<'a> mode (f : 'a -> unit) (proc : Processor<'a>) =
         let newFuncs = proc.Funcs

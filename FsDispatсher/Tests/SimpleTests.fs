@@ -36,14 +36,18 @@ module SimpleTests =
                 |> Register.syncHead<string> (has "m")
                 |> Register.syncHead<int> (has 12)
                 |> Register.syncHead<obj> (hasOneOf [12; "m"])
-                //sync async
+                //async
                 |> Register.async<string> (has "m")
                 |> Register.async<int> (has 12)
                 |> Register.async<obj> (hasOneOf [12; "m"])
-                //sync queue
+                //queue
                 |> Register.queue<string> (has "m")
                 |> Register.queue<int> (has 12)
                 |> Register.queue<obj> (hasOneOf [12; "m"])
+                //dedicated queue
+                |> Register.dedicatedQueue<string> 1 (has "m")
+                |> Register.dedicatedQueue<int> 1 (has 12)
+                |> Register.dedicatedQueue<obj> 1 (hasOneOf [12; "m"])
                 |> init
     
         Send.sync d 12
@@ -53,4 +57,4 @@ module SimpleTests =
         
         (fun x -> E.Complete x )
         |> checkCount.PostAndReply
-        |> should equal 16
+        |> should equal 20
