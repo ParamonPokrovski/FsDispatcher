@@ -18,21 +18,24 @@ type Processor<'a>(mailbox : MailboxProcessor<'a>, funcs : Deliver.Container<'a>
 module Mailbox =
     let empty<'a> = new MailboxProcessor<'a>(fun x -> async{()})
 
-    let create<'a> (c : Deliver.Container<'a>) = 
+    let create<'a> container = 
         new MailboxProcessor<'a>(fun inbox ->                                     
                                     let rec messageLoop() = async{
                                         
                                         let! msg = inbox.Receive()
         
-                                        c.[Deliver.key  Deliver.QueueMode.Sync]
-                                        |> List.iter (fun x -> x msg)
+                                        container
+                                        |> Publish.sync msg (key (SyncMode.Head |> BasicMode.Sync |> QueueMode.Each))
+                                        |> Publish.async msg (key (BasicMode.Async |> QueueMode.Each))
+                                        |> Publish.sync msg (key (SyncMode.Tail |> BasicMode.Sync |> QueueMode.Each))
+                                        |> ignore
                                         
                                         return! messageLoop()}                                    
                                     messageLoop() )
 
 [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
 module Processor =
-    let create<'a> id = new Processor<'a>(Mailbox.empty<'a>, Deliver.Container.queue<'a>)
+    let create<'a> id = new Processor<'a>(Mailbox.empty<'a>, Deliver.Container.Create.queue<'a>)
     
     let register<'a> mode (f : 'a -> unit) (proc : Processor<'a>) =
         let newFuncs = proc.Funcs

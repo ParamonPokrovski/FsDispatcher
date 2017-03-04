@@ -7,7 +7,7 @@ type Dispatcher =
     private { funcs :  Deliver.Container<obj>
               queues : Queue.Container }
     
-let create = { funcs = Deliver.Container.basic<obj>
+let create = { funcs = Deliver.Container.Create.basic<obj>
                queues = Queue.Container.empty}
 
 let register<'a> mode (func: 'a -> unit) (dispatcher : Dispatcher) =   
@@ -27,18 +27,29 @@ let register<'a> mode (func: 'a -> unit) (dispatcher : Dispatcher) =
             queues = dispatcher.queues
                      |> Queue.Container.registerWithId<'a> (Deliver.key m) (Some id) func
         }
-        
-
-let broadcast<'a> (func:(obj -> unit)-> unit) mode dispatcher =
-    dispatcher.funcs.[mode]
-    |> List.iter func
-    dispatcher
-
-let enqueue<'a> message dispatcher =
-    dispatcher.queues 
-    |> Queue.Container.publish message
-    dispatcher
 
 let init dispatcher = 
     Queue.Container.init dispatcher.queues
     dispatcher
+
+module Deliver =
+    open FsDispatcher.Deliver
+
+    let enqueue message dispatcher =
+        dispatcher.queues 
+        |> Queue.Container.publish message
+        dispatcher
+
+    let basic func dispatcher =
+        dispatcher.funcs
+        |> func |> ignore
+        dispatcher
+
+    let start<'a> dispatcher (message : 'a) = 
+        let om = box message
+        dispatcher
+        |> basic (Publish.sync om (key (BasicMode.Sync SyncMode.Head)))
+        |> basic (Publish.sync om (key BasicMode.Async))
+        |> enqueue om
+        |> basic (Publish.sync om (key (BasicMode.Sync SyncMode.Tail)))
+        |> ignore

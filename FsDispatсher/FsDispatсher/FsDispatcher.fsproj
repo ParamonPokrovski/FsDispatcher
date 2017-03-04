@@ -43,7 +43,6 @@
     <Compile Include="Deliver.fs" />
     <Compile Include="Queue.fs" />
     <Compile Include="Dispatcher.fs" />
-    <Compile Include="Publisher.fs" />
     <Compile Include="Helpers.fs" />
   </ItemGroup>
   <PropertyGroup>

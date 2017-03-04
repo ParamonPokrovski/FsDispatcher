@@ -4,7 +4,6 @@ open NUnit.Framework
 open FsUnit
 
 open FsDispatcher.Dispatcher
-open FsDispatcher.Publisher
 open FsDispatcher.Helpers
 open Tests.Evaluator
 
@@ -27,27 +26,21 @@ module SimpleTests =
             consumeAny v msg
             checkCount.Post (E.Value msg)
 
+        let testMode mode = 
+            Dispatcher.register<string> mode (has "m")
+            >> Dispatcher.register<int> mode (has 12)
+            >> Dispatcher.register<obj> mode (hasOneOf [12; "m"])
+
         let d = create
-                //sync tail 
-                |> Register.syncTail<string> (has "m")
-                |> Register.syncTail<int> (has 12)
-                |> Register.syncTail<obj> (hasOneOf [12; "m"])
-                //sync head 
-                |> Register.syncHead<string> (has "m")
-                |> Register.syncHead<int> (has 12)
-                |> Register.syncHead<obj> (hasOneOf [12; "m"])
-                //async
-                |> Register.async<string> (has "m")
-                |> Register.async<int> (has 12)
-                |> Register.async<obj> (hasOneOf [12; "m"])
-                //queue
-                |> Register.queue<string> (has "m")
-                |> Register.queue<int> (has 12)
-                |> Register.queue<obj> (hasOneOf [12; "m"])
-                //dedicated queue
-                |> Register.dedicatedQueue<string> 1 (has "m")
-                |> Register.dedicatedQueue<int> 1 (has 12)
-                |> Register.dedicatedQueue<obj> 1 (hasOneOf [12; "m"])
+                |> testMode (Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> Deliver.Mode.Basic)
+                |> testMode (Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> Deliver.Mode.Basic)
+                |> testMode (Deliver.BasicMode.Async |> Deliver.Mode.Basic)
+                |> testMode (Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
+                |> testMode (Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
+                |> testMode (Deliver.BasicMode.Async |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
+                |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Each))
+                |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Each))
+                |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.BasicMode.Async |> Deliver.QueueMode.Each))
                 |> init
     
         Send.sync d 12
@@ -57,4 +50,4 @@ module SimpleTests =
         
         (fun x -> E.Complete x )
         |> checkCount.PostAndReply
-        |> should equal 20
+        |> should equal 36
