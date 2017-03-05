@@ -31,27 +31,17 @@ module SimpleTests =
             >> Dispatcher.register<int> mode (has 12)
             >> Dispatcher.register<obj> mode (hasOneOf [12; "m"])
             
+        let testAllBasic (mode : Deliver.BasicMode -> _) = 
+             testMode (Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> mode)
+             >> testMode (Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> mode)
+             >> testMode (Deliver.BasicMode.Async |> mode)
+
         let d = create
-                |> testMode (Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> Deliver.Mode.Basic)
-                |> testMode (Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> Deliver.Mode.Basic)
-                |> testMode (Deliver.BasicMode.Async |> Deliver.Mode.Basic)
-
-                |> testMode (Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
-                |> testMode (Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
-                |> testMode (Deliver.BasicMode.Async |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
-
-                |> testMode (Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Last |> Deliver.Mode.Queue)
-                |> testMode (Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Last |> Deliver.Mode.Queue)
-                |> testMode (Deliver.BasicMode.Async |> Deliver.QueueMode.Last |> Deliver.Mode.Queue)
-
-                |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Each))
-                |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Each))
-                |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.BasicMode.Async |> Deliver.QueueMode.Each))
-
-                |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Last))
-                |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Last))
-                |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.BasicMode.Async |> Deliver.QueueMode.Last))
-
+                |> testAllBasic Deliver.Mode.Basic
+                |> testAllBasic (fun x -> x |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
+                |> testAllBasic (fun x -> x |> Deliver.QueueMode.Last |> Deliver.Mode.Queue)
+                |> testAllBasic (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Each))
+                |> testAllBasic (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Last))
                 |> init
     
         Send.sync d 12
