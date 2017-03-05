@@ -7,8 +7,8 @@ type Dispatcher =
     private { funcs :  Deliver.Container<obj>
               queues : Queue.Container }
     
-let create = { funcs = Deliver.Container.Create.basic<obj>
-               queues = Queue.Container.empty}
+let create() = { funcs = Deliver.Container.Create.basic<obj>
+                 queues = Queue.Container.empty}
 
 let register<'a> mode (func: 'a -> unit) (dispatcher : Dispatcher) =   
     match mode with

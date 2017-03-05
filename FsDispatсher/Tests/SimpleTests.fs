@@ -26,24 +26,34 @@ module SimpleTests =
             consumeAny v msg
             checkCount.Post (E.Value msg)
 
-        let testMode mode = 
+        let regMode mode = 
             Dispatcher.register<string> mode (has "m")
             >> Dispatcher.register<int> mode (has 12)
             >> Dispatcher.register<obj> mode (hasOneOf [12; "m"])
             
-        let testAllBasic (mode : Deliver.BasicMode -> _) = 
-             testMode (Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> mode)
-             >> testMode (Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> mode)
-             >> testMode (Deliver.BasicMode.Async |> mode)
-
-        let d = create
-                |> testAllBasic Deliver.Mode.Basic
-                |> testAllBasic (fun x -> x |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
-                |> testAllBasic (fun x -> x |> Deliver.QueueMode.Last |> Deliver.Mode.Queue)
-                |> testAllBasic (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Each))
-                |> testAllBasic (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Last))
+        let regAllBasic dispatcher mode = 
+            [Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync
+             Deliver.SyncMode.Head |> Deliver.BasicMode.Sync
+             Deliver.BasicMode.Async ]
+            |> Seq.map mode
+            |> Seq.fold (fun d m -> regMode m d) dispatcher
+             
+        (*let d = create()
+                |> regAllBasic Deliver.Mode.Basic
+                |> regAllBasic (fun x -> x |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
+                |> regAllBasic (fun x -> x |> Deliver.QueueMode.Last |> Deliver.Mode.Queue)
+                |> regAllBasic (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Each))
+                |> regAllBasic (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Last))
+                |> init*)
+             
+        let d = [Deliver.Mode.Basic
+                 (fun x -> x |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
+                 (fun x -> x |> Deliver.QueueMode.Last |> Deliver.Mode.Queue)
+                 (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Each))
+                 (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Last))]
+                |> Seq.fold regAllBasic (create())
                 |> init
-    
+
         Send.sync d 12
         System.Threading.Thread.Sleep (1000)
         Send.sync d "m"   
