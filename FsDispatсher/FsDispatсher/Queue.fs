@@ -25,9 +25,9 @@ module Mailbox =
                                         let! msg = inbox.Receive()
         
                                         container
-                                        |> Publish.sync msg (key (SyncMode.Head |> BasicMode.Sync |> QueueMode.Each))
-                                        |> Publish.async msg (key (BasicMode.Async |> QueueMode.Each))
-                                        |> Publish.sync msg (key (SyncMode.Tail |> BasicMode.Sync |> QueueMode.Each))
+                                        |> Publish.Broadcast.sync msg (key (SyncMode.Head |> BasicMode.Sync |> QueueMode.Each))
+                                        |> Publish.Parralel.run msg (key (BasicMode.Async |> QueueMode.Each))
+                                        |> Publish.Broadcast.sync msg (key (SyncMode.Tail |> BasicMode.Sync |> QueueMode.Each))
                                         |> ignore
                                         
                                         return! messageLoop()}                                    

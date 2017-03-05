@@ -48,8 +48,8 @@ module Deliver =
     let start<'a> dispatcher (message : 'a) = 
         let om = box message
         dispatcher
-        |> basic (Publish.sync om (key (BasicMode.Sync SyncMode.Head)))
-        |> basic (Publish.sync om (key BasicMode.Async))
+        |> basic (Publish.Broadcast.sync om (key (BasicMode.Sync SyncMode.Head)))
+        |> basic (Publish.Broadcast.async om (key BasicMode.Async))
         |> enqueue om
-        |> basic (Publish.sync om (key (BasicMode.Sync SyncMode.Tail)))
+        |> basic (Publish.Broadcast.sync om (key (BasicMode.Sync SyncMode.Tail)))
         |> ignore

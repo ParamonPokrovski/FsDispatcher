@@ -49,11 +49,22 @@ module Container =
         |> Map.change mode (func :: current)    
         
 module Publish =
-    let broadcast<'a> (func:('a -> unit)-> unit) mode (container : Container<'a>) =
-        container.[mode]
-        |> List.iter func
-        container
+    module Broadcast =
+        let run<'a> (func:('a -> unit)-> unit) mode (container : Container<'a>) =
+            container.[mode]
+            |> List.iter func
+            container
 
-    let sync<'a> message = broadcast<'a> (fun f -> f message)
-    let async<'a> message = broadcast<'a> (fun f -> async{ f message} |> Async.Start)
+        let sync<'a> message = run<'a> (fun f -> f message)
+        let async<'a> message = run<'a> (fun f -> async{ f message} |> Async.Start)
+
+    module Parralel =
+        let run<'a> (message:'a) mode (container : Container<'a>) =
+            container.[mode]
+            |> Seq.map (fun f -> async{ f message})
+            |> Async.Parallel
+            |> Async.RunSynchronously
+            |> ignore
+            container
+
 
