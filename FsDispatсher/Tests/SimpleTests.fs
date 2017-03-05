@@ -9,56 +9,91 @@ open Tests.Evaluator
 
 [<TestFixture>]
 module SimpleTests =
-    
-    let consume assume message = 
-        message |> should equal assume
-    let consumeAny<'a when 'a : equality> (assumes : 'a seq) (m : 'a) = 
-        (assumes |> Seq.exists ((=) m))
-        |> should be True 
-    
-    [<Test>]
-    let ``Messages receiving``() =            
-        let checkCount = Tests.Evaluator.increment<obj>
-        let has v msg =
-            consume v msg
-            checkCount.Post (E.Value msg)
-        let hasOneOf v msg =
-            consumeAny v msg
-            checkCount.Post (E.Value msg)
 
-        let regMode mode = 
-            Dispatcher.register<string> mode (has "m")
-            >> Dispatcher.register<int> mode (has 12)
-            >> Dispatcher.register<obj> mode (hasOneOf [12; "m"])
+    type State =
+        private 
+            { checkCount : Collector.Collector<obj, int>
+              dispatcher : Dispatcher
+            }
+
+    [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
+    module State =
+        let create() = 
+            { checkCount = Tests.Evaluator.Collector.increment<obj>
+              dispatcher = create()
+            }
+
+        let send msg state = 
+            Send.sync state.dispatcher msg
+            System.Threading.Thread.Sleep (2000)
+            state
+
+        let checkCount value state =
+            state.checkCount
+            |> Collector.shouldCompleteWith value
+            state
+
+    module Has = 
+        let one v state msg =
+            consume v msg
+            state.checkCount.Post (Collector.E.Value msg)
+
+        let oneOf v state msg =
+            consumeAny v msg
+            state.checkCount.Post (Collector.E.Value msg)
+
+    [<Test>]
+    let ``Messages receiving by delivery modes``() =            
+        let regMode state mode = 
+            Dispatcher.register<string> mode (Has.one "m" state)
+            >> Dispatcher.register<int> mode (Has.one 12 state)
+            >> Dispatcher.register<obj> mode (Has.oneOf [12; "m"] state)
             
-        let regAllBasic dispatcher mode = 
+        let regAllBasic state dispatcher mode = 
             [Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync
              Deliver.SyncMode.Head |> Deliver.BasicMode.Sync
              Deliver.BasicMode.Async ]
             |> Seq.map mode
-            |> Seq.fold (fun d m -> regMode m d) dispatcher
-             
-        (*let d = create()
-                |> regAllBasic Deliver.Mode.Basic
-                |> regAllBasic (fun x -> x |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
-                |> regAllBasic (fun x -> x |> Deliver.QueueMode.Last |> Deliver.Mode.Queue)
-                |> regAllBasic (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Each))
-                |> regAllBasic (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Last))
-                |> init*)
-             
-        let d = [Deliver.Mode.Basic
-                 (fun x -> x |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
-                 (fun x -> x |> Deliver.QueueMode.Last |> Deliver.Mode.Queue)
-                 (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Each))
-                 (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Last))]
-                |> Seq.fold regAllBasic (create())
-                |> init
+            |> Seq.fold (fun d m -> regMode state m d) dispatcher
+                     
+        let register state = 
+            {state with
+                dispatcher = 
+                    [Deliver.Mode.Basic
+                     (fun x -> x |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
+                     (fun x -> x |> Deliver.QueueMode.Last |> Deliver.Mode.Queue)
+                     (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Each))
+                     (fun x -> Deliver.Mode.DedicatedQueue (1, x |> Deliver.QueueMode.Last))]
+                    |> Seq.fold (regAllBasic state) state.dispatcher
+                    |> init}
 
-        Send.sync d 12
-        System.Threading.Thread.Sleep (1000)
-        Send.sync d "m"   
-        System.Threading.Thread.Sleep (1000)
-        
-        (fun x -> E.Complete x )
-        |> checkCount.PostAndReply
-        |> should equal 60
+        State.create()
+        |> register
+        |> State.send 12
+        |> State.send "m"
+        |> State.checkCount 60
+        |> ignore
+
+    [<Test>]
+    let ``Messages receiving by helper functions``() =    
+        let m = 1
+
+        let register state = 
+            let check = Has.one m state
+            {state with
+                dispatcher = 
+                    state.dispatcher
+                    |> Register.async check
+                    |> Register.sync check
+                    |> Register.Queue.each check
+                    |> Register.Queue.last check
+                    |> Register.Queue.Dedicated.each 1 check
+                    |> Register.Queue.Dedicated.last 1 check
+                    |> init
+            }
+
+        State.create()
+        |> register
+        |> State.send m
+        |> State.checkCount 6
+        |> ignore
