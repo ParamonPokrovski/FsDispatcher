@@ -17,21 +17,33 @@ type Processor<'a>(mailbox : MailboxProcessor<'a>, funcs : Deliver.Container<'a>
 
 module Mailbox =
     let empty<'a> = new MailboxProcessor<'a>(fun x -> async{()})
+    
+    module private Deliver =
+        let fake msg (queueMode : BasicMode -> QueueMode) = id
+
+        let run msg (queueMode : BasicMode -> QueueMode) =
+            Publish.Broadcast.sync msg (key (SyncMode.Head |> BasicMode.Sync |> queueMode))
+            >> Publish.Parralel.run msg (key (BasicMode.Async |>  queueMode))
+            >> Publish.Broadcast.sync msg (key (SyncMode.Tail |> BasicMode.Sync |> queueMode))
+        
+        let runIf (condition : bool) =
+            if condition
+            then run
+            else fake
 
     let create<'a> container = 
         new MailboxProcessor<'a>(fun inbox ->                                     
-                                    let rec messageLoop() = async{
+            let rec messageLoop() = async{
                                         
-                                        let! msg = inbox.Receive()
+                let! msg = inbox.Receive()
         
-                                        container
-                                        |> Publish.Broadcast.sync msg (key (SyncMode.Head |> BasicMode.Sync |> QueueMode.Each))
-                                        |> Publish.Parralel.run msg (key (BasicMode.Async |> QueueMode.Each))
-                                        |> Publish.Broadcast.sync msg (key (SyncMode.Tail |> BasicMode.Sync |> QueueMode.Each))
-                                        |> ignore
+                container
+                |> Deliver.run msg QueueMode.Each
+                |> Deliver.runIf (inbox.CurrentQueueLength=0) msg QueueMode.Last
+                |> ignore
                                         
-                                        return! messageLoop()}                                    
-                                    messageLoop() )
+                return! messageLoop()}                                    
+            messageLoop() )
 
 [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
 module Processor =

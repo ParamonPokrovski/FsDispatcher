@@ -11,7 +11,8 @@ type BasicMode =
     | Async
 
 type QueueMode =
-    | Each of BasicMode 
+    | Each of BasicMode
+    | Last of BasicMode
     
 type Mode =
     | Basic of BasicMode
@@ -37,7 +38,10 @@ module Container =
             |> create<'a>
 
         let queue<'a> =        
-            [QueueMode.Each BasicMode.Async; QueueMode.Each (BasicMode.Sync SyncMode.Head); QueueMode.Each (BasicMode.Sync SyncMode.Tail)]
+            [QueueMode.Each BasicMode.Async; 
+             QueueMode.Each (BasicMode.Sync SyncMode.Head); QueueMode.Each (BasicMode.Sync SyncMode.Tail);
+             QueueMode.Last BasicMode.Async; 
+             QueueMode.Last (BasicMode.Sync SyncMode.Head); QueueMode.Last (BasicMode.Sync SyncMode.Tail);]
             |> Seq.map key
             |> create<'a>
 

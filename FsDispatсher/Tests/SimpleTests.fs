@@ -30,24 +30,35 @@ module SimpleTests =
             Dispatcher.register<string> mode (has "m")
             >> Dispatcher.register<int> mode (has 12)
             >> Dispatcher.register<obj> mode (hasOneOf [12; "m"])
-
+            
         let d = create
                 |> testMode (Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> Deliver.Mode.Basic)
                 |> testMode (Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> Deliver.Mode.Basic)
                 |> testMode (Deliver.BasicMode.Async |> Deliver.Mode.Basic)
+
                 |> testMode (Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
                 |> testMode (Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
                 |> testMode (Deliver.BasicMode.Async |> Deliver.QueueMode.Each |> Deliver.Mode.Queue)
+
+                |> testMode (Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Last |> Deliver.Mode.Queue)
+                |> testMode (Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Last |> Deliver.Mode.Queue)
+                |> testMode (Deliver.BasicMode.Async |> Deliver.QueueMode.Last |> Deliver.Mode.Queue)
+
                 |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Each))
                 |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Each))
                 |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.BasicMode.Async |> Deliver.QueueMode.Each))
+
+                |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.SyncMode.Tail |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Last))
+                |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.SyncMode.Head |> Deliver.BasicMode.Sync |> Deliver.QueueMode.Last))
+                |> testMode (Deliver.Mode.DedicatedQueue (1, Deliver.BasicMode.Async |> Deliver.QueueMode.Last))
+
                 |> init
     
         Send.sync d 12
+        System.Threading.Thread.Sleep (1000)
         Send.sync d "m"   
-
-        System.Threading.Thread.Sleep (3000)
+        System.Threading.Thread.Sleep (1000)
         
         (fun x -> E.Complete x )
         |> checkCount.PostAndReply
-        |> should equal 36
+        |> should equal 60
