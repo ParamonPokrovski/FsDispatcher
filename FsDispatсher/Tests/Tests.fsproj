@@ -52,8 +52,9 @@
   <ItemGroup>
     <None Include="packages.config" />
     <Compile Include="Evaluator.fs" />
-    <Compile Include="SimpleTests.fs" />
+    <Compile Include="ParallelTests.fs" />
     <None Include="app.config" />
+    <Compile Include="SimpleTests.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FSharp.Core">

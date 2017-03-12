@@ -30,3 +30,11 @@
             fun (x:obj) -> match Option.cast<'a> x with
                            | Some a -> func a
                            | _ -> ()
+
+        let execute count f =
+            [1..count]
+            |> List.iter (fun _ -> f())
+
+    module Threading =
+        let sleep (ms:int) = 
+            System.Threading.Thread.Sleep(ms)

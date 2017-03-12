@@ -40,6 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Prelude.fs" />
+    <Compile Include="Parallel.fs" />
     <Compile Include="Deliver.fs" />
     <Compile Include="Queue.fs" />
     <Compile Include="Dispatcher.fs" />
