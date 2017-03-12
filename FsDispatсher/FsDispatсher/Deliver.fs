@@ -62,7 +62,7 @@ module Publish =
         let sync<'a> message = run<'a> (fun f -> f message)
         let async<'a> message = run<'a> (fun f -> async{ f message} |> Async.Start)
 
-    module Parralel =
+    module Parallel =
         let run<'a> (message:'a) mode (container : Container<'a>) =
             container.[mode]
             |> Seq.map (fun f -> async{ f message})

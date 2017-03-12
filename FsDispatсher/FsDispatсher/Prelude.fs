@@ -38,3 +38,6 @@
     module Threading =
         let sleep (ms:int) = 
             System.Threading.Thread.Sleep(ms)
+
+    module Guid =
+        let create = System.Guid.NewGuid()

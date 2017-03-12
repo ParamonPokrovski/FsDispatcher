@@ -88,12 +88,15 @@ module SimpleTests =
                     |> Register.Queue.each check
                     |> Register.Queue.last check
                     |> Register.Queue.Dedicated.each 1 check
+                    |> Register.Queue.Dedicated.eachParallel 1 5 check
                     |> Register.Queue.Dedicated.last 1 check
+                    |> Register.Queue.Exclusive.each check
+                    |> Register.Queue.Exclusive.eachParallel 5 check
                     |> init
             }
 
         State.create()
         |> register
         |> State.send m
-        |> State.checkCount 6
+        |> State.checkCount 9
         |> ignore

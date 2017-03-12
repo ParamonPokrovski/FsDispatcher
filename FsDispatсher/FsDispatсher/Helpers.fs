@@ -3,6 +3,7 @@
 open FsDispatcher.Prelude
 open FsDispatcher.Deliver
 open FsDispatcher.Dispatcher
+open FsDispatcher.Parallel
 
 module Register =
     let async<'a> = register<'a> (BasicMode.Async |> Mode.Basic)
@@ -13,8 +14,13 @@ module Register =
         let last<'a> = register<'a> (BasicMode.Async |> QueueMode.Last|> Mode.Queue)
 
         module Dedicated =
-            let each<'a> id = register<'a> (Mode.DedicatedQueue (id, BasicMode.Async |> QueueMode.Each ))
-            let last<'a> id = register<'a> (Mode.DedicatedQueue (id, BasicMode.Async |> QueueMode.Last ))
+            let each<'a,'b> (id : 'b) = register<'a> (Mode.DedicatedQueue (id, BasicMode.Async |> QueueMode.Each ))
+            let eachParallel<'a,'b> (id : 'b) parallelism func = each<'a,'b> id (func |> Func.mapParallel parallelism)
+            let last<'a,'b> (id : 'b) = register<'a> (Mode.DedicatedQueue (id, BasicMode.Async |> QueueMode.Last ))
+
+        module Exclusive =
+            let each<'a> = Dedicated.each Guid.create
+            let eachParallel<'a> = Dedicated.eachParallel Guid.create
 
 module Send =                
     let sync<'a> = Deliver.start<'a>

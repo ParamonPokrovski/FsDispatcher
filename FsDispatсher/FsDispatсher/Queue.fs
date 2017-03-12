@@ -23,7 +23,7 @@ module Mailbox =
 
         let run msg (queueMode : BasicMode -> QueueMode) =
             Publish.Broadcast.sync msg (key (SyncMode.Head |> BasicMode.Sync |> queueMode))
-            >> Publish.Parralel.run msg (key (BasicMode.Async |>  queueMode))
+            >> Publish.Parallel.run msg (key (BasicMode.Async |>  queueMode))
             >> Publish.Broadcast.sync msg (key (SyncMode.Tail |> BasicMode.Sync |> queueMode))
         
         let runIf (condition : bool) =
